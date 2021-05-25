@@ -1,0 +1,26 @@
+<div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-xl">
+  <div class="modal-content bg-secondary">
+    <div class="modal-header">
+      <h5 class="modal-title">{{ table_title }}</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+      <small>
+      <table id="{{ modal_data.table_id }}" class = "table table-dark table-striped table-bordered table-hover table-sm display" width="100%">
+        <thead><tr>
+          {% for col in modal_data.table_cols %}
+          <th class="{{ 'time_column' if col == 'timestamp' else '' }}">
+            {{col.replace('aux_', '').replace('_', ' ')|upper}}
+          </th>
+          {% endfor %}
+        </tr></thead>
+        <tbody>
+            <!-- Dynamically requested data from list.html inserted here -->
+        </tbody>
+      </table>
+      </small>
+
+    </div>
+  </div>
+</div>

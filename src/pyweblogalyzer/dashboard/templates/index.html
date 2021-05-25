@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>PyWebLogalyzer</title>
+
+    <!-- Meta tags definition -->
+    <meta charset="utf-8">
+    <meta name="description" content="`borgweb` is a web frontend for the `borgbackup` software.">
+    <meta name="author" content="Vivien Chene">
+    <meta name="viewport" content="width=device-width initial-scale=1.0 maximum-scale=1.0 user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='imgs/favicon.ico') }}" type="image/x-icon" />
+
+    <!-- Stylesheets import -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/datatables.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/materialdesignicons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  </head>
+
+  <body>
+    <!-- Loading sign --->
+    <div id="loadsign">
+      <div class="spinner-border text-light" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div class="text-center text-white">Loading logs...</div>
+    </div>
+
+    <div id="wrapper" >
+
+      <!-- Nav bar --->
+      <nav class="navbar navbar-expand-sm fixed-top navbar-dark bg-dark">
+        <!-- Collapse button, displayed when the menu is collapsed -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-target="#navbar_content" aria-controls="navbar_content" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbar_content">
+
+        <span class="navbar-brand mb-0 h1">PyWeblogAlyzer</span>
+
+        <ul class="navbar-nav mr-auto nav-pills">
+          <li class="nav-item"><a class="nav-link" href="#dashboard-badges">Badges</a></li>
+
+          {% for db_id, db_info in dashboards.items() %}
+            {% if loop.index == 3 %}
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Dashboards</a>
+                <ul class="dropdown-menu bg-dark">
+            {% endif %}
+
+            <li class="nav-item"><a class="nav-link" href="#db-card-{{loop.index}}">{{db_info.title}}</a></li>
+
+            {% if loop.last and loop.index >= 3 %}
+                </ul>
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+        <!-- display/hide tables collapse dashboards -->
+      </nav>
+
+
+      <!-- Page content --->
+      <div class="container-fluid" id="page-content">
+
+        <!-- Badges --->
+        <div id="dashboard-bagdes">
+          <div class="row mx-1">
+            <div class="col-md-12 bg-secondary bg-gradient my-2" data-bs-toggle="collapse" id ="dashboard-badges" data-bs-target="#dashboard-badges-content">
+              <h4 class="cat-header">Overall Analyzed Requests
+                <span class="pull-right">
+                  <span id="start_date" class="from"></span>
+                  &nbsp;-&nbsp;
+                  <span id="end_date" class="to"></span>
+                </span>
+              </h4>
+
+              <div class="row collapse show" id="dashboard-badges-content">
+                <!-- All badges generated -->
+                {% for badge_id, badge_info in badges.items() %}
+                <div class="col-md-2  p-2">
+                  <div class="dashboard-badge {{badge_info.type}}">
+                    <div class="col-title">
+                      <div><span class="mdi mdi-chart-bar"></span><small>{{badge_info.title}}</small></div>
+                      <h3 class="dashboard-badge-value" id="{{badge_id}}">-</h3>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- End of badges --->
+
+        <!-- Dashboards. Large ones takes 2 slots,by having a second not displayed, and display an empty one if not on a row start --->
+        <div id="dashboard-cards">
+          {% for db_id, db_info in dashboards.items() %}
+            {% if db_id != "_hidden_" %}
+            {% if db_info.large or loop.index0 is divisibleby 2 %}
+          <div class="row mx-1 my-2">
+            {% endif %}
+            {% if db_info.large %}
+            <div class="card col-md-12 bg-secondary dashboard-card">
+            {% else %}
+            <div class="card col-md-6 bg-secondary dashboard-card">
+            {% endif %}
+              <div class="card-header cat-header dashboard-card-header" data-bs-toggle="collapse" id ="db-card-{{loop.index}}" data-bs-target="#db-card-content-{{loop.index}}">
+                {{db_info.title}}
+              </div>
+              <div class="card-body collapse show" id="db-card-content-{{loop.index}}">
+                  {% if db_id != "_empty_" %}
+                  <div class="dashboard-card-graph">
+                    {% if db_info.graph_config %}
+                    <div id="db-card-chart-{{db_id}}" class="db-card-chart"></div>
+                    {% endif %}
+                  </div>
+                  <div class="dashboard-card-table">
+                    <small>
+                    <table id="db-card-table-{{db_id}}" class = "table table-dark table-striped table-bordered table-hover table-sm display" width="100%">
+                      <thead><tr>
+                        {% for col in db_info.columns %}
+                        <th class="{{ 'time_column' if col == 'timestamp' else '' }}">
+                          {{col.replace('aux_', '').replace('_', ' ')|upper}}
+                        </th>
+                        {% endfor %}
+                      </tr></thead>
+                      <tbody>
+                          <!-- Dynamically requested data from list.html inserted here -->
+                      </tbody>
+                    </table>
+                    </small>
+                  </div>
+                  {% endif %}
+              </div>
+            </div>
+            {% if db_info.large or loop.index0 is not divisibleby 2 %}
+          </div>
+            {% endif %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <!-- End of dashboards --->
+
+        <div class="modal fade" id="db_modal" tabindex="-1" aria-labelledby="db_modal_label" aria-hidden="true"></div>
+
+      </div>
+      <!-- End of content --->
+
+    </div>
+
+    <!-- Scripts import -->
+    <script language="javascript" type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.3.1.min.js') }}"></script>
+    <script language="javascript" type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script language="javascript" type="text/javascript" src="{{ url_for('static', filename='js/datatables.min.js') }}"></script>
+    <script language="javascript" type="text/javascript" src="{{ url_for('static', filename='js/dt_datetime.js') }}"></script>
+    <script language="javascript" type="text/javascript" src="{{ url_for('static', filename='js/plotly-latest.min.js') }}"></script>
+    <script language="javascript" type="text/javascript" src="{{ url_for('static', filename='js/moment.js') }}"></script>
+    <script language="javascript" type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+    <!-- Start page scripts whenever it is completely loaded -->
+    <script type="text/javascript" nonce="pgld">
+      initParameters(
+        // Generate the url used in the template to avoid hardcoding them
+        "{{ url_for('dashboard.get_data') }}",
+        "{{ url_for('dashboard.get_context_data', dashboard='__DB_ID__', key='__DB_KEY__') }}",
+        // Generate the graph configs
+        {
+          {% for db_id, db_info in dashboards.items() %}
+            {% if db_info.graph_config %}
+              'db-card-chart-{{ db_id }}': {{ db_info.graph_config | tojson }},
+            {% endif %}
+          {% endfor %}
+        },
+        "{{ config.DATATABLE_TIME_DISPLAY_FORMAT }}",
+      );
+
+      $(document).ready(pageStart);
+
+    </script>
+  </body>
+</html>
