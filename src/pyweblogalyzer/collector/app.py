@@ -102,8 +102,7 @@ class CollectorApp(Thread):
         IPAPI_RATE_LIMITER_WAIT = 1.0
         DEFAULT_VALUES = {'city': "unknown", 'country_name': "unknown", 'latitude': 0.0, 'longitude': 0.0}
 
-        # return DEFAULT_VALUES
-        if not ipaddr or not self.is_remote_ip(ipaddr):
+        if not self._config['ENABLE_GEOLOC'] or not ipaddr or not self.is_remote_ip(ipaddr):
             return DEFAULT_VALUES
         # Get geo info from cache, or fill it
         if ipaddr in self._geoip_cache:

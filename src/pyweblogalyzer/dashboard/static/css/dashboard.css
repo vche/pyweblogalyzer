@@ -14,14 +14,11 @@ nav {
 	margin:80px;
 	text-align:center;
 }
-#loadsign .spinner-border {
-	width: 3rem; height: 3rem;
-}
+#loadsign .spinner-border { width: 3rem; height: 3rem; }
+#last_update { font-size: smaller; }
 
 /* Dashboard cards styling */
-.dashboard-card-collapse, .dashboard-card-collapse:hover {
-  color: white;}
-/* .card {margin-bottom:10px;} */
+.dashboard-card-collapse, .dashboard-card-collapse:hover { color: white; }
 
 .cat-header {
 	letter-spacing: -1px;

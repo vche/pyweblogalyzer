@@ -30,6 +30,9 @@ class Config(object):
     # https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
     LOG_DATE_TIME_FORMAT = "%d/%b/%Y:%H:%M:%S %z"
 
+    # Enable ip geolocalisation
+    ENABLE_GEOLOC = False
+
     # Log format. The following info are accepted, use {} to ignore
     # remote_ip:  Remote client IP
     # datetime:   Date and time in format LOG_DATE_TIME_FORMAT
@@ -69,8 +72,11 @@ class Config(object):
     # Dashboards settings
     #
 
+    # Preset refresh times in seconds
+    REFRESH_TIMES = [30, 60, 300, 600]
+
     # Format of the datetime displayed in datatables (https://momentjs.com/docs/#/parsing/)
-    DATATABLE_TIME_DISPLAY_FORMAT='YYYY/MM/DD HH:mm:ss'
+    DATATABLE_TIME_DISPLAY_FORMAT = 'YYYY/MM/DD HH:mm:ss'
 
     # Each dashboard is specifed as dictionnary with a name that must be unique, and contains the following fields:
     #
@@ -100,12 +106,9 @@ class Config(object):
     #                     The 'timestamp' column is updated with the time period start of the row
     #                     Columns of each row in the period are summed up, non number columns are removed
     #                     Applied after the group_by_cols if specified, so the count_title column is available.
-    #     graph_config:   Configuration of the  chart.js graph (https://www.chartjs.org/docs/latest/configuration/)
-    #                     In the data labels, put the column name containing the x axis data, and in each dataset
-    #                     'data', the column name containing the axis data of the dataset. If colors are not specified,
-    #                     a default set will be used.
-    #                     https://date-fns.org/docs/format
-    #     graph_axis:     Column names for x and y axis (must be in display_cols): [x_col_name, y_col_name]
+    #     graph_config:   Configuration of the  potly.js graph (https://plotly.com/javascript/)
+    #                     In the data labels, put the column name containing the x and y axis data, and in each dataset
+    #                     Column names for axis must be in the table (in display_cols or time_title or count_title)
     #
     # Optional fields, Non Contextual dashboards only:
     #     badge_title:    If not None, adds a badge widget with the specified title and table row count as value.
@@ -119,36 +122,36 @@ class Config(object):
         "requests": {
             "table_title": "Requests",
             "time_title": "count",
-            "time_group": "h",
+            "time_group": "1h",
             "graph_config": {
                 'data': [
-                    {'type': 'scatter', 'x': "timestamp", 'y': "count"}
+                    {'title': 'requests', 'type': 'scatter', 'x': "timestamp", 'y': "count"},
+                    {'title': 'byte sent', 'type': 'scatter', 'x': "timestamp", 'y': "bytes_sent", 'yaxis': 'y2'}
                 ],
                 'layout': {
                     'xaxis': {'type': 'date', 'tickformat': '%d/%m/%y %H:%M:%S'},
                     'yaxis': {'title': 'Requests'},
+                    'yaxis2': {'title': 'bytes sent', 'overlaying': 'y', 'side': 'right'},
                 },
             },
             "display_cols": ["timestamp", "bytes_sent"],
+            "on_click": "ctxt_requests",
         },
         "codes": {
             "badge_title": None,
             "badge_type": "info",
-            "table_title": "Request per status code",
+            "table_title": "Requests per status code",
             "count_title": "count",
-            "display_cols": ["request_status"],
-            "group_by_cols": ["request_status"],
+            "display_cols": ["request_status", "http_url"],
+            "group_by_cols": ["request_status", "http_url"],
             "graph_config": {
                 'data': [{'type': 'pie', 'labels': "request_status", 'values': "count"}],
                 'layout': {
                     'xaxis': {},
                     'yaxis': {'title': 'Requests'},
                 },
-                'config': {
-                    'scrollZoom': True,
-                    'responsive': True,
-                },
             },
+            "on_click": "ctxt_codes",
         },
         "remote_ips": {
             "badge_title": "Total unique IPs",
@@ -156,30 +159,46 @@ class Config(object):
             "count_title": "IP count",
             "display_cols": ["remote_ip", "city", "country"],
             "group_by_cols": ['remote_ip'],
-            "on_click": "ctxt_requests",
-        },
-        "countries": {
-            "badge_title": "Total countries",
-            "badge_type": "info",
-            "table_title": "Requests per country",
-            "count_title": "Request count",
-            "display_cols": ["country"],
-            "group_by_cols": ['country'],
             "graph_config": {
-                'data': [{'type': 'bar', 'x': "country", 'y': "Request count"}],
+                'data': [{'type': 'bar', 'x': "remote_ip", 'y': "IP count"}],
                 'layout': {
                     'xaxis': {},
                     'yaxis': {'title': 'Requests'},
                 },
             },
+            "on_click": "ctxt_ips",
+        },
+        "countries": {
+            "badge_title": "Total countries",
+            "badge_type": "info",
+            "table_title": "Requests per country",
+            "count_title": "Requests count",
+            "display_cols": ["country"],
+            "group_by_cols": ['country'],
+            "graph_config": {
+                'data': [{'type': 'bar', 'x': "country", 'y': "Requests count"}],
+                'layout': {
+                    'xaxis': {},
+                    'yaxis': {'title': 'Requests'},
+                },
+            },
+            "on_click": "ctxt_countries",
         },
         "cities": {
             "badge_title": "Total cities",
             "badge_type": "info",
             "table_title": "Requests per city",
-            "count_title": "Request count",
+            "count_title": "Requests count",
             "display_cols": ["city", "country"],
             "group_by_cols": ['city'],
+            "graph_config": {
+                'data': [{'type': 'bar', 'x': "city", 'y': "Requests count"}],
+                'layout': {
+                    'xaxis': {},
+                    'yaxis': {'title': 'Requests'},
+                },
+            },
+            "on_click": "ctxt_cities",
         },
         "urls": {
             "badge_title": None,
@@ -187,6 +206,14 @@ class Config(object):
             "count_title": "URLs count",
             "display_cols": ["http_url"],
             "group_by_cols": ['http_url'],
+            "graph_config": {
+                'data': [{'type': 'bar', 'x': "http_url", 'y': "URLs count"}],
+                'layout': {
+                    'xaxis': {},
+                    'yaxis': {'title': 'Requests'},
+                },
+            },
+            "on_click": "ctxt_urls",
         },
         "browsers": {
             "badge_title": "Browsers",
@@ -206,6 +233,7 @@ class Config(object):
                     'responsive': True,
                 },
             },
+            "on_click": "ctxt_browsers",
         },
         "os": {
             "badge_title": "OS",
@@ -225,6 +253,7 @@ class Config(object):
                     'responsive': True,
                 },
             },
+            "on_click": "ctxt_os",
         },
         "devices": {
             "badge_title": "Devices",
@@ -244,15 +273,18 @@ class Config(object):
                     'responsive': True,
                 },
             },
-
+            "on_click": "ctxt_devices",
         },
         "downloads": {
             "badge_title": "Total Downloads",
             "badge_type": "info",
             "table_title": "Downloads",
             "count_title": None,
-            "display_cols": ["aux_kodi_item", "bytes_sent", "request_time", "timestamp"],
+            "display_cols": [
+                "aux_kodi_type", "aux_kodi_item", "remote_ip", "city", "country", "bytes_sent", "request_time", "timestamp"
+            ],
             "group_by_cols": None,
+            "on_click": "ctxt_downloads",
         },
         "logs": {
             "badge_title": "Total requests",
@@ -269,14 +301,34 @@ class Config(object):
                 "bytes_sent"
             ],
             "group_by_cols": None,
+            "on_click": "ctxt_logs",
         },
 
         # Contextual dashboards
-        "ctxt_requests": {
+        "ctxt_ips": {"contextual": True, "table_title": "Requests details for ip {}", "filter": "remote_ip"},
+        "ctxt_requests": {"contextual": True, "table_title": "Requests details from time {}", "filter": "timestamp"},
+        "ctxt_codes": {"contextual": True, "table_title": "Details for http status {}", "filter": "request_status"},
+        "ctxt_countries": {"contextual": True, "table_title": "Requests from {}", "filter": "country"},
+        "ctxt_cities": {"contextual": True, "table_title": "Requests from {}", "filter": "city"},
+        "ctxt_urls": {"contextual": True, "table_title": "Requests for {}", "filter": "http_url"},
+        "ctxt_browsers": {"contextual": True, "table_title": "Requests from browser {}", "filter": "browser"},
+        "ctxt_devices": {"contextual": True, "table_title": "Requests from device {}", "filter": "device"},
+        "ctxt_os": {"contextual": True, "table_title": "Requests from OS {}", "filter": "os"},
+        "ctxt_logs": {"contextual": True, "table_title": "Logs at {}", "filter": "timestamp"},
+        "ctxt_downloads":
+        {
             "contextual": True,
-            "table_title": "Requests details for {}",
-            "filter": "remote_ip",
-            "display_cols": [],
+            "table_title": "Downloads from {}",
+            "filter": "aux_kodi_type",
+            "group_by_cols": ["remote_ip"],
+            "display_cols": [
+                "aux_kodi_item",
+                "remote_ip", "city",
+                "country",
+                "bytes_sent",
+                "request_time",
+                "timestamp",
+                "request_status"
+            ]
         },
-
     }

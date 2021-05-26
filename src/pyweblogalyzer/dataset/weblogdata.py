@@ -2,23 +2,23 @@ import pandas
 
 # Required info fields. Accessible directly as attributes, always created at init.
 LOG_INFOS = [
-    "remote_ip",
-    "http_referer",
-    "hostname",
     "timestamp",
-    "bytes_sent",
-    "request_time",
+    "remote_ip",
+    "http_url",
     "request_status",
     "city",
     "country",
-    "lat",
-    "long",
-    "http_operation",
-    "http_url",
-    "protocol",
+    "bytes_sent",
+    "request_time",
     "browser",
     "os",
     "device",
+    "http_operation",
+    "http_referer",
+    "hostname",
+    "protocol",
+    "lat",
+    "long",
 ]
 
 LOG_AUX_INFO_PREFIX = "aux_"

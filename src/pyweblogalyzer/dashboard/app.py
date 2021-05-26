@@ -1,12 +1,16 @@
+# TODO: 3- Update collector to scan all log files in a folder
+# TODO: 4- Add docker version
+# TODO: 5- Add config of modules as dict (collector, server)
+# TODO: Add expand modebar button to open the graph in a modal window
+
 import os
 import time
 import urllib.parse
-import json
-import pandas
-import numpy
-
 from copy import deepcopy
-from flask import Blueprint, Flask, current_app, render_template, url_for
+
+import pandas
+from flask import Blueprint, Flask, current_app, render_template
+
 from pyweblogalyzer.dataset.weblogdata import WebLogData
 
 appblueprint = Blueprint("dashboard", __name__)
@@ -74,15 +78,24 @@ class DashboardApp(Flask):
 
         # Filter rows based on the value if specified
         if filter and value:
-            # Convert the value to int or float if it represents a number
-            if value.isdigit():
-                value = int(value)
-            else:
+            # If the filter is not a valid column, check if it is period and the value a timestamp
+            if filter not in tabledata.columns:
                 try:
-                    value = float(value)
+                    start_time = pandas.Timestamp(value)
+                    time_delta = pandas.Timedelta(filter)
+                    tabledata = logdata.loc[start_time:start_time + time_delta]
                 except ValueError:
-                    pass
-            tabledata = tabledata[tabledata[filter] == value]
+                    self.logger.warning(f"Filter {filter} value {value} is not a column nor a time period, ignoring")
+            else:
+                # Convert the value to int or float if it represents a number
+                if value.isdigit():
+                    value = int(value)
+                else:
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        pass
+                tabledata = tabledata[tabledata[filter] == value]
 
         # Filter out to keep specify columns
         if display_cols:
@@ -206,7 +219,7 @@ class DashboardApp(Flask):
                         "title": db[self.CONFIG_KEY_BADGE_TITLE],
                         "type": db.get(self.CONFIG_KEY_BADGE_TYPE, self.DEFAULT_BADGE_TYPE),
                     }
-                cols = deepcopy(db[self.CONFIG_KEY_DISPLAY_COLS])
+                cols = deepcopy(db.get(self.CONFIG_KEY_DISPLAY_COLS, []))
                 if db.get(self.CONFIG_KEY_COUNT_TITLE):
                     cols.append(db[self.CONFIG_KEY_COUNT_TITLE])
                 if db.get(self.CONFIG_KEY_TIME_TITLE):
@@ -235,11 +248,6 @@ class DashboardApp(Flask):
     def get_dashboard_data(self):
         """Get dashboard data to fill the html page."""
         a = time.time()
-        # TODO: Update config to add data sent dashboard, missing graphs, missing context dbs
-        # TODO: Add expand modebar button to open the graph in a modal window
-        # TODO: Add auto reload
-        # TODO: Update collector to scan all log files in a folder
-
         # Get the latest data
         logdata = self._dataset.get_dataframe()
 
@@ -250,7 +258,7 @@ class DashboardApp(Flask):
                 db_data = {}
                 tabledata = self.get_dashboard_table_data(
                     logdata,
-                    display_cols=dashboard[self.CONFIG_KEY_DISPLAY_COLS],
+                    display_cols=dashboard.get(self.CONFIG_KEY_DISPLAY_COLS, []),
                     groupby_cols=dashboard.get(self.CONFIG_KEY_GROUP_BY_COLS),
                     count_title=dashboard.get(self.CONFIG_KEY_COUNT_TITLE, "count"),
                     time_group=dashboard.get(self.CONFIG_KEY_TIME_GROUP),
@@ -274,17 +282,6 @@ class DashboardApp(Flask):
                             graph_data.setdefault(key, [])
                             graph_data[key].append(tabledata[dataset[key]].tolist())
                     db_data["graph_data"] = graph_data
-
-                # If a context dashboard is specified, generate an example link
-                # ctxt_db = dashboard.get(self.CONFIG_KEY_ONCLICK)
-                # if ctxt_db:
-                #     filter = self.config[self.CONFIG_KEY_DASHBOARDS][ctxt_db][self.CONFIG_KEY_FILTER]
-                #     try:
-                #         value = urllib.parse.quote(tabledata[filter][1], safe="")
-                #         db_data["ctxt_link"] = url_for('dashboard.get_context_data', dashboard=dashboard_id, key=value)
-                #     except KeyError:
-                #         self.logger.warning(f"DB {dashboard_id}: No filtered data found for filter {filter}")
-
                 display_data.append(db_data)
 
         page_data = {
@@ -303,18 +300,24 @@ class DashboardApp(Flask):
         ctxt_db = parent_dashboard_config.get(self.CONFIG_KEY_ONCLICK)
         # Only proceed further if a contextual dashboard is configured
         if ctxt_db:
+            parent_time_group = parent_dashboard_config.get(self.CONFIG_KEY_TIME_GROUP)
             dashboard_config = self.config[self.CONFIG_KEY_DASHBOARDS].get(ctxt_db)
+
+            # If the timestamp is the filter and the parent db is time grouped, filter by this time period
+            filter = dashboard_config.get(self.CONFIG_KEY_FILTER)
+            if parent_time_group and filter == "timestamp":
+                filter = parent_time_group
+
             if dashboard_config:
                 logdata = self._dataset.get_dataframe()
                 tabledata = self.get_dashboard_table_data(
                     logdata,
-                    display_cols=dashboard_config[self.CONFIG_KEY_DISPLAY_COLS],
+                    display_cols=dashboard_config.get(self.CONFIG_KEY_DISPLAY_COLS, []),
                     groupby_cols=dashboard_config.get(self.CONFIG_KEY_GROUP_BY_COLS),
                     count_title=dashboard_config.get(self.CONFIG_KEY_COUNT_TITLE, "count"),
-                    filter=dashboard_config.get(self.CONFIG_KEY_FILTER),
+                    filter=filter,
                     value=urllib.parse.unquote(key)
                 )
-                # return tabledata.to_html()
                 title = dashboard_config["table_title"].format(key)
                 modal_data = {}
                 modal_data["table_id"] = "db-modal-table"
@@ -323,7 +326,7 @@ class DashboardApp(Flask):
                 modal_data["html"] = render_template('modal.html', modal_data=modal_data, table_title=title)
                 return modal_data
             else:
-                self.log.warning(f"No dashboard {dashboard}, check the configuration")
+                self.logger.warning(f"No dashboard {dashboard}, check the configuration")
         return ""
 
 

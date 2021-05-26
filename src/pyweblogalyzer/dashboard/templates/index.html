@@ -30,7 +30,7 @@
     <div id="wrapper" >
 
       <!-- Nav bar --->
-      <nav class="navbar navbar-expand-sm fixed-top navbar-dark bg-dark">
+      <nav class="navbar navbar-expand-sm fixed-top navbar-dark bg-dark nav-fill">
         <!-- Collapse button, displayed when the menu is collapsed -->
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-target="#navbar_content" aria-controls="navbar_content" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -57,7 +57,22 @@
               </li>
             {% endif %}
           {% endfor %}
+
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Refresh</a>
+            <ul class="dropdown-menu bg-dark">
+              <li class="nav-item" onclick="set_refresh(0)"><span id="refresh-0" class="nav-link refresh_nav active">Disabled</span></li>
+              {% for refresh_time in config.REFRESH_TIMES %}
+                <li class="nav-item" onclick="set_refresh({{refresh_time}})">
+                  <span id="refresh-{{refresh_time}}" class="nav-link refresh_nav">{{refresh_time}} secs</span>
+                </li>
+              {% endfor %}
+
+            </ul>
+          </li>
         </ul>
+        <span class="nav-item text-success" id="last_update">-</span>
+      </div>
         <!-- display/hide tables collapse dashboards -->
       </nav>
 
@@ -123,7 +138,7 @@
                     <table id="db-card-table-{{db_id}}" class = "table table-dark table-striped table-bordered table-hover table-sm display" width="100%">
                       <thead><tr>
                         {% for col in db_info.columns %}
-                        <th class="{{ 'time_column' if col == 'timestamp' else '' }}">
+                        <th>
                           {{col.replace('aux_', '').replace('_', ' ')|upper}}
                         </th>
                         {% endfor %}

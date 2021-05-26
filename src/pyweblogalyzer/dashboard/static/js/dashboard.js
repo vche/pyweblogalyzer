@@ -4,6 +4,7 @@ var graphConfigs = null;
 var getCalendarUrl = null;
 var dashboardsGraphs = {};
 var dtTimeformat = "";
+var refreshTimer = null;
 
 function initParameters(dashBoardDataUrl, dashBoardContextUrl, graphConfig, dtformat)
 {
@@ -17,6 +18,17 @@ function buildContextUrl(db_id, db_key) {
     return getDashBoardContextUrl.replace(
         '__DB_ID__', encodeURIComponent(db_id)).replace('__DB_KEY__', encodeURIComponent(db_key)
     );
+}
+
+function set_refresh(period_sec) {
+    clearInterval(refreshTimer);
+    $(".refresh_nav").each(function() {$(this).removeClass("active")});
+    $("#refresh-" + period_sec).addClass("active");
+    if (period_sec > 0) refreshTimer = setInterval(refreshDashboards, period_sec*1000);
+}
+
+function refreshDashboards() {
+    $.get(getDashboardsDatatUrl, function(data) {dataReceived(data);});
 }
 
 function dataReceived(json_resp)
@@ -42,7 +54,7 @@ function dataReceived(json_resp)
         dt.rows.add(json_resp.dashboards[i].table_data)
         dt.draw()
     }
-
+    $("#last_update").html("Last updated: " + new Date(Date.now()).toLocaleTimeString())
     $('#loadsign').hide();
 }
 
@@ -54,21 +66,69 @@ function modalDataReceived(modal_data) {
     }
 }
 
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function formatFloatTime(ftime) {
+    if (ftime < 1) return `${ftime * 1000} ms`;
+    if (ftime < 60) return `${ftime.toFixed(3)} s`;
+    time_str = ""
+    rem = ftime
+    if (ftime > 3600) {
+        hours = Math.floor(ftime/3600)
+        time_str += hours + " h ";
+        rem = ftime - hours*3600;
+    }
+    mins = Math.floor(rem/60);
+    secs = rem - mins*60;
+    time_str += `${mins} min ${secs.toFixed(3)} s`;
+    return time_str;
+}
+
 function createDashboardTable(tableId, ctxt = false, tab_data=null)
 {
-    // Detect colums from the table header
+    col_renderer_classes = {
+        'timestamp': 'datetime_column',
+        'bytessent': 'size_column',
+        'requesttime': 'time_column'
+    }
+
+    // Auto detect colums from the table header and add a class to customize rendering if needed
     var cols = [];
     $('#' + tableId).find('thead tr th').each(function() {
-        cols.push(this.innerText)});
+        cols.push(this.innerText)
+        col = this.innerText.replaceAll(" ","").replaceAll("\n","").toLowerCase();
+        cls = col_renderer_classes[col]
+        if (cls) $(this).addClass(cls);
+    });
 
     var dbTable = $('#'+tableId).DataTable( {
         // "columns": [{ "width": 25 },{  }],
         // "initComplete": function( settings, json ) {},
         data: tab_data,
-        columnDefs: [ {
-            targets: "time_column",
-            render: $.fn.dataTable.render.moment("YYYY-MM-DDTHH:mm:ssZZ", dtTimeformat)
-        } ],
+        columnDefs: [
+            {
+                targets: "datetime_column",
+                render: $.fn.dataTable.render.moment("YYYY-MM-DDTHH:mm:ssZZ", dtTimeformat)
+            },
+            {
+                targets: "size_column",
+                render: function ( data, type, row ) { return formatBytes(data) },
+            },
+            {
+                targets: "time_column",
+                render: function ( data, type, row ) { return formatFloatTime(data) },
+            }
+        ],
         "pageLength": 10,
         "responsive": true,
         "dom": datatable_dom(),
@@ -76,6 +136,7 @@ function createDashboardTable(tableId, ctxt = false, tab_data=null)
         "order": [[cols.length-1, 'desc']]
     } );
 
+    // Add event listener when a row is clicked if not a contextual dashboard
     if (!ctxt) {
         $('#'+tableId).on('click', 'tbody tr', function() {
             db_id = tableId.split("db-card-table-")[1];
@@ -97,6 +158,7 @@ function createDashboardGraph(graphId)
 }
 
 function initDashboardTables() {
+    // Create tables
     $('#dashboard-cards').find('.dashboard-card-table table').each(
         function() {
             createDashboardTable(this.id);
@@ -180,5 +242,5 @@ function pageStart()
     initDashboardGraphs();
 
     // Request dashboards data
-    $.get(getDashboardsDatatUrl, function(data) {dataReceived(data);});
+    refreshDashboards();
 }
