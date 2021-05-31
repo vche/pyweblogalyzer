@@ -118,7 +118,7 @@ class CollectorApp(Thread):
             if mmdb_path:
                 return geoip2.database.Reader(mmdb_path)
         except Exception as e:
-            self.log(f"Cannot open geoloc database with path {mmdb_path}")
+            self.log.error(f"Cannot open geoloc database with path {mmdb_path}: {e}")
         return None
 
     def _get_geoloc(self, ipaddr):

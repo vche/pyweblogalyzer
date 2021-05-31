@@ -1,4 +1,4 @@
-# TODO: Faster geoloc api, no limit
+# TODO: Add map graph for cities
 # TODO: Add config of modules as dict (collector, server)
 # TODO: Add expand modebar button to open the graph in a modal window
 
