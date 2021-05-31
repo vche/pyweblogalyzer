@@ -23,4 +23,5 @@ CMD ["/pyvenv/bin/pyweblogalyzer", "2>&1"]
 
 VOLUME /config
 VOLUME /logs
+VOLUME /geoipdb
 EXPOSE 9333

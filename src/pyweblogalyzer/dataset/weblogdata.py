@@ -18,6 +18,7 @@ LOG_INFOS = [
     "protocol",
     "lat",
     "long",
+    "asn",
 ]
 
 LOG_AUX_INFO_PREFIX = "aux_"

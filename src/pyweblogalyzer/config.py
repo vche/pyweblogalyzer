@@ -33,8 +33,11 @@ class Config(object):
     # https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
     LOG_DATE_TIME_FORMAT = "%d/%b/%Y:%H:%M:%S %z"
 
-    # Enable ip geolocalisation
-    ENABLE_GEOLOC = False
+    # Maxmind geoip database location. To get the free database register and download the files see link below.
+    # Ideally use the updater to keep them up to date:
+    # https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
+    GEOIP_CITY_DB = '/Users/viv/GoogleDrive/dev/pyweblogalyzer/etc/dev/GeoLite2-City.mmdb'
+    GEOIP_ASN_DB = '/Users/viv/GoogleDrive/dev/pyweblogalyzer/etc/dev/GeoLite2-ASN.mmdb'
 
     # Log format. The following info are accepted, use {} to ignore
     # remote_ip:  Remote client IP
@@ -169,7 +172,7 @@ class Config(object):
             "table_title": "Unique IPs",
             "count_title": "IP count",
             "table_order": "IP count",
-            "display_cols": ["remote_ip", "city", "country"],
+            "display_cols": ["remote_ip", "city", "country", "asn"],
             "group_by_cols": ['remote_ip'],
             "graph_config": {
                 'data': [{'type': 'bar', 'x': "remote_ip", 'y': "IP count"}],
@@ -301,7 +304,7 @@ class Config(object):
             "table_order": "timestamp",
             "table_hide": ["aux_kodi_type"],
             "display_cols": [
-                "timestamp", "aux_kodi_item", "remote_ip", "city", "country", "bytes_sent", "request_time", "aux_kodi_type"
+                "timestamp", "aux_kodi_item", "remote_ip", "city", "country", "bytes_sent", "request_time", "asn", "aux_kodi_type"
             ],
             "group_by_cols": None,
             "on_click": "ctxt_downloads",
@@ -317,7 +320,7 @@ class Config(object):
                 "http_operation",
                 "http_url",
                 "request_status",
-                "city", "country",
+                "city", "country", "asn",
                 "bytes_sent"
             ],
             "group_by_cols": None,
@@ -345,10 +348,11 @@ class Config(object):
                 "aux_kodi_item",
                 "remote_ip", "city",
                 "country",
+                "asn",
                 "bytes_sent",
                 "request_time",
                 "timestamp",
-                "request_status"
+                "request_status",
             ]
         },
     }

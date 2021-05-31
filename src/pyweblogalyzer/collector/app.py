@@ -4,7 +4,7 @@ import os
 import time
 import parse
 # import pandas
-import ipapi
+import geoip2.database
 import user_agents
 
 from datetime import datetime
@@ -39,6 +39,8 @@ class CollectorApp(Thread):
 
         self._enricher = LogEnrichers(config)
         self._local_networks = [ip_network(local_net) for local_net in self._config['LOCAL_NETWORKS']]
+        self._geoloc_city = self._init_geoloc(self._config.get('GEOIP_CITY_DB'))
+        self._geoloc_asn = self._init_geoloc(self._config.get('GEOIP_ASN_DB'))
 
 
     def run(self):
@@ -111,28 +113,27 @@ class CollectorApp(Thread):
                 return False
         return True
 
-    def _get_geoloc(self, ipaddr):
-        IPAPI_RATE_LIMITER_WAIT = 1.0
-        DEFAULT_VALUES = {'city': "unknown", 'country_name': "unknown", 'latitude': 0.0, 'longitude': 0.0}
+    def _init_geoloc(self, mmdb_path):
+        try:
+            if mmdb_path:
+                return geoip2.database.Reader(mmdb_path)
+        except Exception as e:
+            self.log(f"Cannot open geoloc database with path {mmdb_path}")
+        return None
 
-        if not self._config['ENABLE_GEOLOC'] or not ipaddr or not self.is_remote_ip(ipaddr):
-            return DEFAULT_VALUES
-        # Get geo info from cache, or fill it
-        if ipaddr in self._geoip_cache:
-            return self._geoip_cache[ipaddr]
-        else:
-            try:
-                geoloc = ipapi.location(ipaddr)
-            except ipapi.exceptions.RateLimited:
-                self.log.warning(f"ipapi rate limitation reached, waiting {IPAPI_RATE_LIMITER_WAIT}s")
-                time.sleep(IPAPI_RATE_LIMITER_WAIT)
-                try:
-                    geoloc = ipapi.location(ipaddr)
-                except ipapi.exceptions.RateLimited:
-                    self.log.warning("Geoloc throttled")
-                    return DEFAULT_VALUES
-            self._geoip_cache[ipaddr] = geoloc
-            return geoloc
+    def _get_geoloc(self, ipaddr):
+        city = None
+        asn = None
+        if self.is_remote_ip(ipaddr):
+            if ipaddr in self._geoip_cache:
+                return self._geoip_cache[ipaddr]
+            else:
+                if self._geoloc_city:
+                    city = self._geoloc_city.city(ipaddr)
+                if self._geoloc_asn:
+                    asn = self._geoloc_asn.asn(ipaddr)
+                self._geoip_cache[ipaddr] = city, asn
+        return city, asn
 
     def _is_excluded(self, parsed_log):
         """Check if a log is configured to be ignored."""
@@ -159,7 +160,7 @@ class CollectorApp(Thread):
             return
 
         # Enrich basic information
-        geoloc = self._get_geoloc(parsed_log[self.LOG_KEY_REMOTE_ADDR])
+        geoloc, asnloc = self._get_geoloc(parsed_log[self.LOG_KEY_REMOTE_ADDR])
         operation, url, protocol = parsed_log[self.LOG_KEY_REQUEST].split()
         user_agent = user_agents.parse(parsed_log[self.LOG_KEY_USER_AGENT])
 
@@ -173,10 +174,11 @@ class CollectorApp(Thread):
             bytes_sent=int(parsed_log[self.LOG_KEY_BYTES_SENT]),
             request_time=float(parsed_log[self.LOG_KEY_REQUEST_TIME]),
             request_status=int(parsed_log['status']),
-            city=geoloc.get('city'),
-            country=geoloc.get('country_name'),
-            lat=geoloc.get('latitude'),
-            long=geoloc.get('longitude'),
+            city=geoloc.city.name if geoloc else "unknown",
+            country=geoloc.country.name if geoloc else "unknown",
+            lat=geoloc.location.latitude if geoloc else 0.0,
+            long=geoloc.location.longitude if geoloc else 0.0,
+            asn=asnloc.autonomous_system_organization if asnloc else "unknown",
             http_operation=operation,
             http_url=url,
             protocol=protocol,

@@ -105,12 +105,14 @@ function createDashboardTable(tableId, ctxt = false, tab_data=null)
     // Auto detect colums from the table header and add a class to customize rendering if needed
     var cols = [];
     var ctxt_key = 0;
+    var order_key = 0;
     $('#' + tableId).find('thead tr th').each(function(index) {
         cols.push(this.innerText)
         col = this.innerText.replaceAll(" ","").replaceAll("\n","").toLowerCase();
         cls = col_renderer_classes[col]
         if (cls) $(this).addClass(cls);
         if ($(this).hasClass('key_column')) ctxt_key = index;
+        if ($(this).hasClass('order_column')) order_key = index;
     });
 
     var dbTable = $('#'+tableId).DataTable( {
@@ -134,15 +136,12 @@ function createDashboardTable(tableId, ctxt = false, tab_data=null)
                 targets: "hidden_column",
                 visible: false,
             },
-            {
-                targets: "order_column",
-                order: 'desc',
-            },
         ],
         "pageLength": 10,
         "responsive": true,
         "dom": datatable_dom(),
         "buttons": datatable_buttons(),
+        "order": [[ order_key, "desc" ]]
     } );
 
     // Add event listener when a row is clicked if not a contextual dashboard
