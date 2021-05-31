@@ -2,7 +2,9 @@ import logging
 
 import pyweblogalyzer
 from pyweblogalyzer import CollectorApp, DashboardApp, WebLogDataSet
+from importlib import metadata
 
+ENVVAR_CONFIG="PYWEBLOGALYZER_CONFIG"
 log = logging.getLogger(__name__)
 
 
@@ -16,12 +18,11 @@ def setup_logging(logfile=None, loglevel=logging.INFO):
 
 def main() -> None:
     """Main entry point."""
-    log.info(f"Starting pyweblogalyzer {pyweblogalyzer.__version__}")
-
     dataset = WebLogDataSet()
-    dashboard = DashboardApp(dataset, "pyweblogalyzer.config.Config", "APP_CONFIG")
+    dashboard = DashboardApp(dataset, "pyweblogalyzer.config.Config", ENVVAR_CONFIG)
     collector = CollectorApp(dataset, dashboard.config)
     setup_logging(logfile=dashboard.config["LOG_FILE"], loglevel=dashboard.config.get("LOG_LEVEL"))
+    log.info(f"Started pyweblogalyzer {metadata.version('pyweblogalyzer')}")
 
     # Todo: start flask in a thread, so that we can kill the other task if one stops,
     # or pass the collector task to the dashboard app ?

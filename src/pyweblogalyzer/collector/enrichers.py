@@ -53,9 +53,9 @@ class LogEnrichers:
     CONFIG_KEY_CONFIG = "config"
 
     def __init__(self, config):
+        self.log = logging.getLogger(__name__)
         self._config = config
         self._enrichers = self._load_enrichers()
-        self.log = logging.getLogger(__name__)
 
     def _load_enrichers(self):
         # Make sure the enricher can import modules from the enricher folder
@@ -72,7 +72,7 @@ class LogEnrichers:
                     class_path, enricher_config[self.CONFIG_KEY_CLASS_NAME], enricher_config[self.CONFIG_KEY_CONFIG])
                 )
             except Exception as e:
-                self.log(
+                self.log.exception(
                     f"Cannot create enricher {enricher_config[self.CONFIG_KEY_CLASS_NAME]} from {class_path}: {e}"
                 )
         return enrichers

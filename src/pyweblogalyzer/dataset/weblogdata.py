@@ -1,4 +1,3 @@
-import pandas
 
 # Required info fields. Accessible directly as attributes, always created at init.
 LOG_INFOS = [

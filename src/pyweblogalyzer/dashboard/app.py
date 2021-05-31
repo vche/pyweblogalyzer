@@ -1,6 +1,5 @@
-# TODO: 3- Update collector to scan all log files in a folder
-# TODO: 4- Add docker version
-# TODO: 5- Add config of modules as dict (collector, server)
+# TODO: Faster geoloc api, no limit
+# TODO: Add config of modules as dict (collector, server)
 # TODO: Add expand modebar button to open the graph in a modal window
 
 import os
@@ -35,6 +34,8 @@ class DashboardApp(Flask):
     CONFIG_KEY_BADGE_TYPE = "badge_type"
     CONFIG_KEY_TABLE_TITLE = "table_title"
     CONFIG_KEY_COUNT_TITLE = "count_title"
+    CONFIG_KEY_TABLE_ORDER = "table_order"
+    CONFIG_KEY_TABLE_HIDE = "table_hide"
     CONFIG_KEY_DISPLAY_COLS = "display_cols"
     CONFIG_KEY_GROUP_BY_COLS = "group_by_cols"
     CONFIG_KEY_CONTEXTUAL = "contextual"
@@ -60,7 +61,7 @@ class DashboardApp(Flask):
         """Start the web app."""
         # Don't use the reloader as it restarts the app dynamically, creating a new collector
         super().run(host=self.config["HOST"], port=self.config["PORT"], debug=self.config["DEBUG"], use_reloader=False)
-        self.logger.info("Dashboard started")
+        self.logger.info("Dashboard started, listening on port {self.config['PORT']}")
 
     def get_dashboard_table_data(
         self,
@@ -232,7 +233,15 @@ class DashboardApp(Flask):
                 dashboards[db_id] = {
                     "title": db[self.CONFIG_KEY_TABLE_TITLE],
                     "columns": cols,
+                    "order": db.get(self.CONFIG_KEY_TABLE_ORDER),
+                    "hide": db.get(self.CONFIG_KEY_TABLE_HIDE, []),
                 }
+
+                # If context db, add filter column
+                ctxt_db = self.config[self.CONFIG_KEY_DASHBOARDS].get(db.get(self.CONFIG_KEY_ONCLICK))
+                if ctxt_db:
+                    dashboards[db_id]["ctxt_filter"] = ctxt_db.get(self.CONFIG_KEY_FILTER)
+
                 # Add graph data if specified
                 graph_config = db.get(self.CONFIG_KEY_GRAPH)
                 if graph_config:
@@ -247,7 +256,7 @@ class DashboardApp(Flask):
 
     def get_dashboard_data(self):
         """Get dashboard data to fill the html page."""
-        a = time.time()
+        start_time = time.time()
         # Get the latest data
         logdata = self._dataset.get_dataframe()
 
@@ -286,12 +295,11 @@ class DashboardApp(Flask):
 
         page_data = {
             "dashboards": display_data,
-            "start_date": str(logdata["timestamp"][0]),
-            "end_date": str(logdata["timestamp"][len(logdata) - 1]),
+            "start_date": logdata.index[0].strftime(self.config['DASHBOARD_RANGE_TIME_FORMAT']),
+            "end_date": logdata.index[len(logdata) - 1].strftime(self.config['DASHBOARD_RANGE_TIME_FORMAT']),
         }
 
-        b = time.time()
-        print(f"exec: {b-a}")
+        self.logger.info(f"Request exec time: {time.time()-start_time}")
         return page_data
 
     def context_data(self, dashboard, key):

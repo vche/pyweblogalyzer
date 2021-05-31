@@ -138,7 +138,7 @@
                     <table id="db-card-table-{{db_id}}" class = "table table-dark table-striped table-bordered table-hover table-sm display" width="100%">
                       <thead><tr>
                         {% for col in db_info.columns %}
-                        <th>
+                        <th class=" {{ 'order_column' if db_info.order == col else '' }} {{ 'hidden_column' if col in db_info.hide else '' }} {{ 'key_column' if col == db_info.ctxt_filter else '' }}">
                           {{col.replace('aux_', '').replace('_', ' ')|upper}}
                         </th>
                         {% endfor %}

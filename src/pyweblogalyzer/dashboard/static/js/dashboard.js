@@ -104,11 +104,13 @@ function createDashboardTable(tableId, ctxt = false, tab_data=null)
 
     // Auto detect colums from the table header and add a class to customize rendering if needed
     var cols = [];
-    $('#' + tableId).find('thead tr th').each(function() {
+    var ctxt_key = 0;
+    $('#' + tableId).find('thead tr th').each(function(index) {
         cols.push(this.innerText)
         col = this.innerText.replaceAll(" ","").replaceAll("\n","").toLowerCase();
         cls = col_renderer_classes[col]
         if (cls) $(this).addClass(cls);
+        if ($(this).hasClass('key_column')) ctxt_key = index;
     });
 
     var dbTable = $('#'+tableId).DataTable( {
@@ -118,7 +120,7 @@ function createDashboardTable(tableId, ctxt = false, tab_data=null)
         columnDefs: [
             {
                 targets: "datetime_column",
-                render: $.fn.dataTable.render.moment("YYYY-MM-DDTHH:mm:ssZZ", dtTimeformat)
+                render: $.fn.dataTable.render.moment("YYYY-MM-DDTHH:mm:ssZZ", dtTimeformat),
             },
             {
                 targets: "size_column",
@@ -127,20 +129,27 @@ function createDashboardTable(tableId, ctxt = false, tab_data=null)
             {
                 targets: "time_column",
                 render: function ( data, type, row ) { return formatFloatTime(data) },
-            }
+            },
+            {
+                targets: "hidden_column",
+                visible: false,
+            },
+            {
+                targets: "order_column",
+                order: 'desc',
+            },
         ],
         "pageLength": 10,
         "responsive": true,
         "dom": datatable_dom(),
         "buttons": datatable_buttons(),
-        "order": [[cols.length-1, 'desc']]
     } );
 
     // Add event listener when a row is clicked if not a contextual dashboard
     if (!ctxt) {
         $('#'+tableId).on('click', 'tbody tr', function() {
             db_id = tableId.split("db-card-table-")[1];
-            db_key = dbTable.row(this).data()[0];
+            db_key = dbTable.row(this).data()[ctxt_key];
             $.get(buildContextUrl(db_id, db_key), function(data) {modalDataReceived(data);});
         });
     }

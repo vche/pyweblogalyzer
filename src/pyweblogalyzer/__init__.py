@@ -3,5 +3,3 @@ from pyweblogalyzer.collector.enrichers import LogEnricherPlugin, install_and_im
 from pyweblogalyzer.dashboard.app import DashboardApp  # ignore F401
 from pyweblogalyzer.dataset.weblog import WebLogDataSet  # ignore F401
 from pyweblogalyzer.dataset.weblogdata import WebLogData  # ignore F401
-
-__version__ = "0.0.1"

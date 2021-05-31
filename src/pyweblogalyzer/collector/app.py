@@ -1,3 +1,4 @@
+import gzip
 import logging
 import os
 import time
@@ -8,7 +9,6 @@ import user_agents
 
 from datetime import datetime
 from ipaddress import ip_address, ip_network
-from os import path
 from threading import Thread
 from pyweblogalyzer.dataset.weblogdata import WebLogData
 from .enrichers import LogEnrichers
@@ -36,6 +36,7 @@ class CollectorApp(Thread):
         self._period = self._config['COLLECTION_DELAY_SECS']
         self._log_parser = parse.compile(self._config['LOG__FORMAT'])
         self._dt_parser = self._config['LOG_DATE_TIME_FORMAT']
+
         self._enricher = LogEnrichers(config)
         self._local_networks = [ip_network(local_net) for local_net in self._config['LOCAL_NETWORKS']]
 
@@ -49,6 +50,7 @@ class CollectorApp(Thread):
             logfiles = self._build_file_list()
             for logfile in logfiles:
                 # TODO: async reading of all files ?
+                self.log.info(f"Parsing {logfile}")
                 self._parse_log_file(logfile)
 
             self.log.info("Collector finished")
@@ -57,36 +59,47 @@ class CollectorApp(Thread):
     def _build_file_list(self):
         """Build the list of log files to parse."""
         config_path = self._config['WEB_LOG_PATH']
-        if path.isfile(config_path):
+        filter = self._config.get('WEB_LOG_FILTER')
+        if os.path.isfile(config_path):
             return [config_path]
-        elif path.isdir(config_path):
-            # TODO get list of filenames matching access log in the folder
-            raise NotImplementedError("Specified config log path is not a file")
+        elif os.path.isdir(config_path):
+            file_list = []
+            for logfile in os.listdir(config_path):
+                logpath = os.path.join(config_path, logfile)
+                # Select the log file if it is a file and contain the filter, if specified
+                if os.path.isfile(logpath) and (not filter or (filter in logfile)):
+                    file_list.append(logpath)
+            return file_list
         else:
             raise ValueError(f"No log files found in {self._config['WEB_LOG_PATH']}")
 
     def _parse_log_file(self, logfile):
         """Load and parse all new logs in the specified file."""
         # Get the last read position in this file, or read from start if new file
+        is_gzip = logfile.endswith("gz")
         last_pos = self._log_positions.get(logfile, 0)
         try:
-            with open(logfile, "r") as file:
-                # Set the file pointer, read from start if the last pos exceeds the file, it means the file has changed
-                if last_pos > os.fstat(file.fileno()).st_size:
-                    last_pos = 0
-                file.seek(last_pos)
+            file = gzip.open(logfile, 'rb') if is_gzip else open(logfile, "rb")
 
-                # Read all new lines and update final position in file
-                log_line = file.readline()
-                while log_line:
-                    try:
-                        self._parse_log_line(log_line.strip())
-                    except Exception as e:
-                        self.log.error(f"Error parsing log {log_line}: {e}")
-                    log_line = file.readline()
-                self._log_positions[logfile] = file.tell()
+            # Set the file pointer, read from start if the last pos exceeds the file, it means the file has changed
+            if (not is_gzip) and (last_pos > os.fstat(file.fileno()).st_size):
+                last_pos = 0
+            file.seek(last_pos)
+
+            # Read all new lines and update final position in file
+            log_line = file.readline().decode()
+            while log_line:
+                try:
+                    self._parse_log_line(log_line.strip())
+                except Exception as e:
+                    self.log.error(f"Error parsing log {log_line}: {e}")
+                log_line = file.readline().decode()
+            self._log_positions[logfile] = file.tell()
         except Exception as e:
             self.log.error(f"Error reading log file {logfile}: {e}")
+        finally:
+            if file:
+                file.close()
 
     def is_remote_ip(self, ip_str):
         # If the ip is loopback, v6, or v4 to local network, it is not remote
@@ -139,7 +152,7 @@ class CollectorApp(Thread):
 
         # Extract info according to custom format configured
         if not parsed_log:
-            self.log.error("Log entry not matching configured format: {log_line}")
+            self.log.error(f"Log entry not matching configured format: {log_line}")
             return
 
         if self._is_excluded(parsed_log):

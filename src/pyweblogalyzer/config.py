@@ -2,19 +2,19 @@ import logging
 
 
 class Config(object):
-    """This is the basic configuration class for BorgWeb."""
+    """This is the basic configuration class for PyWeblogalyzer."""
 
     #
     # Logging settings
     #
-    LOG_FILE = None  # "pyweblogalyzer.log"
+    LOG_FILE = None  # Leave to None to log in stderr and see in docker logs
     LOG_LEVEL = logging.INFO
 
     #
     #: Dashboard server settings
     #
     HOST = "0.0.0.0"  # use 0.0.0.0 to bind to all interfaces
-    PORT = 9200  # ports < 1024 need root
+    PORT = 9333  # ports < 1024 need root
     DEBUG = True  # if True, enable reloader and debugger
 
     #
@@ -23,8 +23,11 @@ class Config(object):
     # Period in second to read new log data
     COLLECTION_DELAY_SECS = 60
 
-    # Path to the access log file. If the path is a folder, all access.log files in the folder will be parsed
-    WEB_LOG_PATH = "etc/dev/access.log"
+    # Path to the access log file. If the path is a folder, all access.log files in the folder will be parsed.
+    # Optionally if a WEB_LOG_FILTER is specified, only files containing the filter will be processed.
+    # For docker, the logs must be in a mapped path
+    WEB_LOG_PATH = "etc/dev"
+    WEB_LOG_FILTER = "access.log"
 
     # Date and time parsing string. Reference:
     # https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
@@ -53,9 +56,10 @@ class Config(object):
     EXCLUDE_REQUESTS = ["/metrics"]
 
     # List of local networks (cannot be geolocalised)
-    LOCAL_NETWORKS=["192.168.0.0/24", "192.168.13.0/24"]
+    LOCAL_NETWORKS = ["192.168.0.0/24", "192.168.13.0/24"]
 
     # Root path of log enrichers. All custom classes must be in this folder (or subfolders)
+    # For docker, the logs must be in a mapped path
     LOG_ENRICHERS_ROOT = "/Users/viv/dev/pyweblogalyzer/etc/dev/log_enrichers"
     # Custom log enrichers, defined by the location of the main python file, and the class name.
     # All enrichers must inherit LogEnrichers (see collector/log_enrichers.py for more details).
@@ -74,6 +78,9 @@ class Config(object):
 
     # Preset refresh times in seconds
     REFRESH_TIMES = [30, 60, 300, 600]
+
+    # Format of the time for start and end date displayed in the dashboard
+    DASHBOARD_RANGE_TIME_FORMAT = "%c"
 
     # Format of the datetime displayed in datatables (https://momentjs.com/docs/#/parsing/)
     DATATABLE_TIME_DISPLAY_FORMAT = 'YYYY/MM/DD HH:mm:ss'
@@ -109,6 +116,8 @@ class Config(object):
     #     graph_config:   Configuration of the  potly.js graph (https://plotly.com/javascript/)
     #                     In the data labels, put the column name containing the x and y axis data, and in each dataset
     #                     Column names for axis must be in the table (in display_cols or time_title or count_title)
+    #     table_order:    Name of the column to use to order data by default. First column is used if not specified.
+    #     table_hide:     List of column to be hidden. Data are still there and usable, but not visible.
     #
     # Optional fields, Non Contextual dashboards only:
     #     badge_title:    If not None, adds a badge widget with the specified title and table row count as value.
@@ -123,6 +132,7 @@ class Config(object):
             "table_title": "Requests",
             "time_title": "count",
             "time_group": "1h",
+            "table_order": "count",
             "graph_config": {
                 'data': [
                     {'title': 'requests', 'type': 'scatter', 'x': "timestamp", 'y': "count"},
@@ -142,6 +152,7 @@ class Config(object):
             "badge_type": "info",
             "table_title": "Requests per status code",
             "count_title": "count",
+            "table_order": "count",
             "display_cols": ["request_status", "http_url"],
             "group_by_cols": ["request_status", "http_url"],
             "graph_config": {
@@ -157,6 +168,7 @@ class Config(object):
             "badge_title": "Total unique IPs",
             "table_title": "Unique IPs",
             "count_title": "IP count",
+            "table_order": "IP count",
             "display_cols": ["remote_ip", "city", "country"],
             "group_by_cols": ['remote_ip'],
             "graph_config": {
@@ -174,6 +186,7 @@ class Config(object):
             "table_title": "Requests per country",
             "count_title": "Requests count",
             "display_cols": ["country"],
+            "table_order": "Requests count",
             "group_by_cols": ['country'],
             "graph_config": {
                 'data': [{'type': 'bar', 'x': "country", 'y': "Requests count"}],
@@ -190,6 +203,7 @@ class Config(object):
             "table_title": "Requests per city",
             "count_title": "Requests count",
             "display_cols": ["city", "country"],
+            "table_order": "Requests count",
             "group_by_cols": ['city'],
             "graph_config": {
                 'data': [{'type': 'bar', 'x': "city", 'y': "Requests count"}],
@@ -206,6 +220,7 @@ class Config(object):
             "count_title": "URLs count",
             "display_cols": ["http_url"],
             "group_by_cols": ['http_url'],
+            "table_order": "URLs count",
             "graph_config": {
                 'data': [{'type': 'bar', 'x': "http_url", 'y': "URLs count"}],
                 'layout': {
@@ -222,6 +237,7 @@ class Config(object):
             "count_title": "count",
             "display_cols": ["browser"],
             "group_by_cols": ['browser'],
+            "table_order": "count",
             "graph_config": {
                 'data': [{'type': 'pie', 'values': "count", 'labels': "browser"}],
                 'layout': {
@@ -242,6 +258,7 @@ class Config(object):
             "count_title": "count",
             "display_cols": ["os"],
             "group_by_cols": ['os'],
+            "table_order": "count",
             "graph_config": {
                 'data': [{'type': 'pie', 'labels': "os", 'values': "count"}],
                 'layout': {
@@ -262,6 +279,7 @@ class Config(object):
             "count_title": "count",
             "display_cols": ["device"],
             "group_by_cols": ['device'],
+            "table_order": "count",
             "graph_config": {
                 'data': [{'type': 'pie', 'labels': "device", 'values': "count"}],
                 'layout': {
@@ -280,8 +298,10 @@ class Config(object):
             "badge_type": "info",
             "table_title": "Downloads",
             "count_title": None,
+            "table_order": "timestamp",
+            "table_hide": ["aux_kodi_type"],
             "display_cols": [
-                "aux_kodi_type", "aux_kodi_item", "remote_ip", "city", "country", "bytes_sent", "request_time", "timestamp"
+                "timestamp", "aux_kodi_item", "remote_ip", "city", "country", "bytes_sent", "request_time", "aux_kodi_type"
             ],
             "group_by_cols": None,
             "on_click": "ctxt_downloads",
