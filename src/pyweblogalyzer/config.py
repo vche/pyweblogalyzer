@@ -26,7 +26,7 @@ class Config(object):
     # Path to the access log file. If the path is a folder, all access.log files in the folder will be parsed.
     # Optionally if a WEB_LOG_FILTER is specified, only files containing the filter will be processed.
     # For docker, the logs must be in a mapped path
-    WEB_LOG_PATH = "etc/dev"
+    WEB_LOG_PATH = "etc/config/"
     WEB_LOG_FILTER = "access.log"
 
     # Date and time parsing string. Reference:
@@ -36,8 +36,8 @@ class Config(object):
     # Maxmind geoip database location. To get the free database register and download the files see link below.
     # Ideally use the updater to keep them up to date:
     # https://dev.maxmind.com/geoip/geolite2-free-geolocation-data
-    GEOIP_CITY_DB = '/Users/viv/GoogleDrive/dev/pyweblogalyzer/etc/dev/GeoLite2-City.mmdb'
-    GEOIP_ASN_DB = '/Users/viv/GoogleDrive/dev/pyweblogalyzer/etc/dev/GeoLite2-ASN.mmdb'
+    GEOIP_CITY_DB = 'etc/config/GeoLite2-City.mmdb'
+    GEOIP_ASN_DB = 'etc/config/GeoLite2-ASN.mmdb'
 
     # Log format. The following info are accepted, use {} to ignore
     # remote_ip:  Remote client IP
@@ -63,17 +63,11 @@ class Config(object):
 
     # Root path of log enrichers. All custom classes must be in this folder (or subfolders)
     # For docker, the logs must be in a mapped path
-    LOG_ENRICHERS_ROOT = "/Users/viv/dev/pyweblogalyzer/etc/dev/log_enrichers"
+    LOG_ENRICHERS_ROOT = "etc/config/log_enrichers"
     # Custom log enrichers, defined by the location of the main python file, and the class name.
     # All enrichers must inherit LogEnrichers (see collector/log_enrichers.py for more details).
     # Each enricher will be called with every parsed log entry, and can add auxiliary informations to them
-    LOG_ENRICHERS = [
-        {
-            'class_path': "dwarferie.py",
-            'class_name': 'DwarferieEnricher',
-            'config': {'kodi_url': '192.168.0.199', 'kodi_port': 8080}
-        }
-    ]
+    LOG_ENRICHERS = []
 
     #
     # Dashboards settings
@@ -138,8 +132,8 @@ class Config(object):
             "table_order": "count",
             "graph_config": {
                 'data': [
-                    {'title': 'requests', 'type': 'scatter', 'x': "timestamp", 'y': "count"},
-                    {'title': 'byte sent', 'type': 'scatter', 'x': "timestamp", 'y': "bytes_sent", 'yaxis': 'y2'}
+                    {'name': 'requests', 'type': 'scatter', 'x': "timestamp", 'y': "count"},
+                    {'name': 'bytes sent', 'type': 'scatter', 'x': "timestamp", 'y': "bytes_sent", 'yaxis': 'y2'}
                 ],
                 'layout': {
                     'xaxis': {'type': 'date', 'tickformat': '%d/%m/%y %H:%M:%S'},
@@ -296,19 +290,6 @@ class Config(object):
             },
             "on_click": "ctxt_devices",
         },
-        "downloads": {
-            "badge_title": "Total Downloads",
-            "badge_type": "info",
-            "table_title": "Downloads",
-            "count_title": None,
-            "table_order": "timestamp",
-            "table_hide": ["aux_kodi_type"],
-            "display_cols": [
-                "timestamp", "aux_kodi_item", "remote_ip", "city", "country", "bytes_sent", "request_time", "asn", "aux_kodi_type"
-            ],
-            "group_by_cols": None,
-            "on_click": "ctxt_downloads",
-        },
         "logs": {
             "badge_title": "Total requests",
             "table_title": "Logs",
@@ -338,21 +319,4 @@ class Config(object):
         "ctxt_devices": {"contextual": True, "table_title": "Requests from device {}", "filter": "device"},
         "ctxt_os": {"contextual": True, "table_title": "Requests from OS {}", "filter": "os"},
         "ctxt_logs": {"contextual": True, "table_title": "Logs at {}", "filter": "timestamp"},
-        "ctxt_downloads":
-        {
-            "contextual": True,
-            "table_title": "Downloads from {}",
-            "filter": "aux_kodi_type",
-            "group_by_cols": ["remote_ip"],
-            "display_cols": [
-                "aux_kodi_item",
-                "remote_ip", "city",
-                "country",
-                "asn",
-                "bytes_sent",
-                "request_time",
-                "timestamp",
-                "request_status",
-            ]
-        },
     }

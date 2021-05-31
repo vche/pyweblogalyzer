@@ -130,8 +130,8 @@ DASHBOARDS_CONFIG = {
         "table_order": "count",
         "graph_config": {
             'data': [
-                {'title': 'requests', 'type': 'scatter', 'x': "timestamp", 'y': "count"},
-                {'title': 'byte sent', 'type': 'scatter', 'x': "timestamp", 'y': "bytes_sent", 'yaxis': 'y2'}
+                {'name': 'requests', 'type': 'scatter', 'x': "timestamp", 'y': "count"},
+                {'name': 'bytes sent', 'type': 'scatter', 'x': "timestamp", 'y': "bytes_sent", 'yaxis': 'y2'}
             ],
             'layout': {
                 'xaxis': {'type': 'date', 'tickformat': '%d/%m/%y %H:%M:%S'},
