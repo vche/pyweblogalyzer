@@ -28,11 +28,13 @@ function set_refresh(period_sec) {
 }
 
 function refreshDashboards() {
+    console.log(new Date(Date.now()).toISOString() + ": Requesting dashboard data");
     $.get(getDashboardsDatatUrl, function(data) {dataReceived(data);});
 }
 
 function dataReceived(json_resp)
 {
+    console.log(new Date(Date.now()).toISOString() + ": Received dashboard data");
     $("#start_date").html(json_resp.start_date)
     $("#end_date").html(json_resp.end_date)
     for (i = 0; i < json_resp.dashboards.length; i++) {
@@ -56,6 +58,7 @@ function dataReceived(json_resp)
     }
     $("#last_update").html("Last updated: " + new Date(Date.now()).toLocaleTimeString())
     $('#loadsign').hide();
+    console.log(new Date(Date.now()).toISOString() + ": Processed dashboard data");
 }
 
 function modalDataReceived(modal_data) {
@@ -146,10 +149,14 @@ function createDashboardTable(tableId, ctxt = false, tab_data=null)
 
     // Add event listener when a row is clicked if not a contextual dashboard
     if (!ctxt) {
-        $('#'+tableId).on('click', 'tbody tr', function() {
+        $('#'+tableId).on('click', 'tbody tr', function(event) {
             db_id = tableId.split("db-card-table-")[1];
-            db_key = dbTable.row(this).data()[ctxt_key];
-            $.get(buildContextUrl(db_id, db_key), function(data) {modalDataReceived(data);});
+            db_key = btoa(dbTable.row(this).data()[ctxt_key]);
+            // Only display details unless first column is clicked to avoid double event in small screen with the "+"
+            if (! $(event.target).hasClass("dtr-control")) {
+                // console.log(event.target)
+                $.get(buildContextUrl(db_id, db_key), function(data) {modalDataReceived(data);});
+            }
         });
     }
   return dbTable

@@ -32,7 +32,7 @@
       <!-- Nav bar --->
       <nav class="navbar navbar-expand-sm fixed-top navbar-dark bg-dark nav-fill">
         <!-- Collapse button, displayed when the menu is collapsed -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-target="#navbar_content" aria-controls="navbar_content" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar_content" aria-controls="navbar_content" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
 
@@ -43,20 +43,14 @@
         <ul class="navbar-nav mr-auto nav-pills">
           <li class="nav-item"><a class="nav-link" href="#dashboard-badges">Badges</a></li>
 
-          {% for db_id, db_info in dashboards.items() %}
-            {% if loop.index == 3 %}
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Dashboards</a>
-                <ul class="dropdown-menu bg-dark">
-            {% endif %}
-
-            <li class="nav-item"><a class="nav-link" href="#db-card-{{loop.index}}">{{db_info.title}}</a></li>
-
-            {% if loop.last and loop.index >= 3 %}
-                </ul>
-              </li>
-            {% endif %}
-          {% endfor %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Dashboards</a>
+            <ul class="dropdown-menu bg-dark">
+              {% for db_id, db_info in dashboards.items() %}
+              <li class="nav-item"><a class="nav-link" href="#db-card-{{loop.index}}">{{db_info.title}}</a></li>
+              {% endfor %}
+            </ul>
+          </li>
 
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Refresh</a>

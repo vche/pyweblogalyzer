@@ -1,7 +1,9 @@
+# TODO: Remove the "first 2" dbs from menu, all in dropdown
 # TODO: Add map graph for cities
 # TODO: Add config of modules as dict (collector, server)
 # TODO: Add expand modebar button to open the graph in a modal window
 
+import base64
 import os
 import time
 import urllib.parse
@@ -303,8 +305,7 @@ class DashboardApp(Flask):
         return page_data
 
     def context_data(self, dashboard, key):
-        db = urllib.parse.unquote(dashboard)
-        parent_dashboard_config = self.config[self.CONFIG_KEY_DASHBOARDS].get(db)
+        parent_dashboard_config = self.config[self.CONFIG_KEY_DASHBOARDS].get(dashboard)
         ctxt_db = parent_dashboard_config.get(self.CONFIG_KEY_ONCLICK)
         # Only proceed further if a contextual dashboard is configured
         if ctxt_db:
@@ -324,7 +325,7 @@ class DashboardApp(Flask):
                     groupby_cols=dashboard_config.get(self.CONFIG_KEY_GROUP_BY_COLS),
                     count_title=dashboard_config.get(self.CONFIG_KEY_COUNT_TITLE, "count"),
                     filter=filter,
-                    value=urllib.parse.unquote(key)
+                    value=key
                 )
                 title = dashboard_config["table_title"].format(key)
                 modal_data = {}
@@ -350,4 +351,7 @@ def get_data():
 
 @appblueprint.route("/context/<string:dashboard>/<string:key>", methods=["GET"])
 def get_context_data(dashboard, key):
-    return current_app.context_data(dashboard, key)
+    # Declode parameters. dashboard is escaped, and key is base64 encoded
+    decoded_dashboard = urllib.parse.unquote(dashboard)
+    decoded_key = base64.b64decode(key.encode()).decode()
+    return current_app.context_data(decoded_dashboard, decoded_key)

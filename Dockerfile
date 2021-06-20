@@ -1,10 +1,4 @@
-# FROM python:3
-FROM ubuntu:focal
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3-pip \
-        && \
-        rm -rf /var/cache/apt /var/lib/apt/lists
+FROM python:3
 ADD src/ /src
 ADD setup.py /
 ADD setup.cfg /
