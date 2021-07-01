@@ -1,10 +1,12 @@
-# TODO: Remove the "first 2" dbs from menu, all in dropdown
-# TODO: Add map graph for cities
+# TODO: resolve local requests locs as server location
+# TODO: size geo marker as % of the biggest requests
+# TODO: add a wait in dashboard until first load of data is finished ?
 # TODO: Add config of modules as dict (collector, server)
 # TODO: Add expand modebar button to open the graph in a modal window
 
 import base64
 import os
+import re
 import time
 import urllib.parse
 from copy import deepcopy
@@ -47,11 +49,14 @@ class DashboardApp(Flask):
     CONFIG_KEY_TIME_GROUP = "time_group"
     CONFIG_KEY_TIME_TITLE = "time_title"
     CONFIG_KEY_GRAPH = "graph_config"
+    CONFIG_TEXT_RENDERER_REGEX = "\{\{(?P<key>[\d\s\w]*)\}\}"
+    DEFAULT_GEO_MARKER_MAX_SIZE = 100
     DEFAULT_BADGE_TYPE = "gray"
 
     def __init__(self, dataset, config_class, config_env: None):
         super().__init__(__name__)
         self._dataset = dataset
+        self.renderer_parser = re.compile(self.CONFIG_TEXT_RENDERER_REGEX)
 
         self.config.from_object(config_class)
         if config_env and os.environ.get(config_env):
@@ -124,7 +129,7 @@ class DashboardApp(Flask):
         # print(f"pipo {tabledata}")
         return tabledata
 
-    def _update_render_config(self, graph_config):
+    def _render_config(self, graph_config):
         """Update the chart.js graph config to fill missing fields and replace labels and datasets.
         If the config is not valid; the graph will be ignored
         """
@@ -148,6 +153,25 @@ class DashboardApp(Flask):
                 'margin': {'l': 60, 'r': 20, 't': 30, 'b': 65, 'pad': 4},
                 'plot_bgcolor': '#F5F5F5',
                 'paper_bgcolor': "rgba(0,0,0,0)",
+                "geo": {
+                    "scope": 'world',
+                    "showland": True,
+                    "landcolor": 'rgb(217, 217, 217)',
+                    "subunitwidth": 1,
+                    "countrywidth": 1,
+                    "subunitcolor": 'rgb(255,255,255)',
+                    "countrycolor": 'rgb(255,255,255)',
+                    "showcoastlines": False,
+                    "showocean": True,
+                    # "showrivers": True,
+                    "showcountries": True,
+                    "showsubunits": True,
+                    "subunitcolor": 'rgb(255,255,255)',
+                    "subunitwidth": 1,
+                    "showland": True,
+                    "resolution": 50,
+                    "showframe": False,
+                },
             },
             'config': {
                 'scrollZoom': True,
@@ -185,9 +209,19 @@ class DashboardApp(Flask):
 
         return rendered_config
 
+    def _render_graph_text(self, text_template, tabledata):
+        fields = self.renderer_parser.findall(text_template)
+        labels = []
+        for idx in range(len(tabledata)):
+            txt = text_template
+            for field in fields:
+                txt = txt.replace("{{" + field + "}}", str(tabledata[field][idx]))
+            labels.append(txt)
+        return labels
+
     def _get_dataset_axis_labels(self, dataset_config):
         """Returns the key couple present in the dict."""
-        key_sets = [["x", "y"], ["values", "labels"]]
+        key_sets = [["x", "y"], ["values", "labels"], ["lat", "lon"]]
         for keyset in key_sets:
             if all(key in dataset_config for key in keyset):
                 return keyset
@@ -247,7 +281,7 @@ class DashboardApp(Flask):
                 # Add graph data if specified
                 graph_config = db.get(self.CONFIG_KEY_GRAPH)
                 if graph_config:
-                    dashboards[db_id]["graph_config"] = self._update_render_config(graph_config)
+                    dashboards[db_id]["graph_config"] = self._render_config(graph_config)
 
                 # If this db is large, add an invisible db to take the next slot
                 if db.get(self.CONFIG_KEY_LARGE):
@@ -292,6 +326,22 @@ class DashboardApp(Flask):
                         for key in self._get_dataset_axis_labels(dataset):
                             graph_data.setdefault(key, [])
                             graph_data[key].append(tabledata[dataset[key]].tolist())
+                        # For geo graphs, render text property
+                        if dataset.get("type") == 'scattergeo':
+                            if 'text' in dataset:
+                                # Render the geo graph test to replace vars with column field values
+                                graph_data.setdefault('text', [])
+                                graph_data['text'].append(self._render_graph_text(dataset['text'], tabledata))
+                            if 'marker' in dataset:
+                                # If a marker size is specified as a string, replace it with the column values
+                                graph_data.setdefault('marker', [])
+                                size = dataset['marker'].get('size')
+                                if isinstance(size, str):
+                                    maxsz = dataset['marker'].get('sizemax', self.DEFAULT_GEO_MARKER_MAX_SIZE)
+                                    marker_data = deepcopy(dataset['marker'])
+                                    marker_data["size"] = [min(int(tabledata[size][idx]), maxsz) for idx in range(len(tabledata))]
+                                    graph_data['marker'].append(marker_data)
+
                     db_data["graph_data"] = graph_data
                 display_data.append(db_data)
 
