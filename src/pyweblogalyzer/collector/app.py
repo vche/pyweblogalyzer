@@ -1,6 +1,7 @@
 import gzip
 import logging
 import os
+import socket
 import time
 import parse
 # import pandas
@@ -42,6 +43,7 @@ class CollectorApp(Thread):
         self._geoloc_city = self._init_geoloc(self._config.get('GEOIP_CITY_DB'))
         self._geoloc_asn = self._init_geoloc(self._config.get('GEOIP_ASN_DB'))
 
+        self._set_server_info()
 
     def run(self):
         """Run the thread periodically polling log files."""
@@ -50,13 +52,25 @@ class CollectorApp(Thread):
             self.log.info("Collector running")
 
             logfiles = self._build_file_list()
+            self._dataset.lock()
             for logfile in logfiles:
                 # TODO: async reading of all files ?
                 self.log.info(f"Parsing {logfile}")
                 self._parse_log_file(logfile)
 
+            self._dataset.unlock()
             self.log.info("Collector finished")
             time.sleep(self._period)
+
+    def _set_server_info(self):
+        server_url = self._config.get('SERVER_URL')
+        if server_url:
+            self._server_ip = socket.gethostbyname(server_url)
+            self._server_city, self._server_asn = self._get_geoloc(self._server_ip)
+        else:
+            self._server_ip = None
+            self._server_city = None
+            self._server_asn = None
 
     def _build_file_list(self):
         """Build the list of log files to parse."""
@@ -133,6 +147,8 @@ class CollectorApp(Thread):
                 if self._geoloc_asn:
                     asn = self._geoloc_asn.asn(ipaddr)
                 self._geoip_cache[ipaddr] = city, asn
+        else:
+            return self._server_city, self._server_asn
         return city, asn
 
     def _is_excluded(self, parsed_log):

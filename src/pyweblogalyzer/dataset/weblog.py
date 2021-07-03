@@ -1,11 +1,25 @@
+import logging
 from pandas import DataFrame, DatetimeIndex
+from pyweblogalyzer.dataset.weblogdata import WebLogData
+from threading import Lock
 
 
 class WebLogDataSet:
+    # Max waait time for getting a lock is 60s
+    LOCK_TIMEOUT = 60.0
+
     def __init__(self):
         self._fields = []
         self._data = []
         self._index = []
+        self._dataset_lock = Lock()
+        self.log = logging.getLogger(__name__)
+        self._empty_df = self._build_empty_dataset()
+
+    def _build_empty_dataset(self):
+        elt = WebLogData()
+        fields, values = elt.to_arrays()
+        return DataFrame([values], columns=fields, index=DatetimeIndex([elt.timestamp]))
 
     def add(self, log_data):
         fields, values = log_data.to_arrays()
@@ -17,6 +31,23 @@ class WebLogDataSet:
             self._fields = fields
 
     def get_dataframe(self):
-        # Creating a new dataframe reordered by date from the dict is the most efficient way,
-        # as updating a df makes panda copying large chunks of data
-        return DataFrame(self._data, columns=self._fields, index=DatetimeIndex(self._index)).sort_index()
+        if self.lock():
+            # Creating a new dataframe reordered by date from the dict is the most efficient way,
+            # as updating a df makes panda copying large chunks of data
+            df = DataFrame(self._data, columns=self._fields, index=DatetimeIndex(self._index)).sort_index()
+            self.unlock()
+        else:
+            df = self._empty_df
+        return df
+
+    def lock(self):
+        res = self._dataset_lock.acquire(timeout = self.LOCK_TIMEOUT)
+        if not res:
+            self.log.error("Couldn't acquire lock on dataset after %s seconds", self.LOCK_TIMEOUT)
+        return res
+
+    def unlock(self):
+        try:
+            self._dataset_lock.release()
+        except RuntimeError as e:
+            self.log.error("Trying to release an unlocked lock %s", e)

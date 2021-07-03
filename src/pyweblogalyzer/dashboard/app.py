@@ -1,7 +1,3 @@
-# TODO: resolve local requests locs as server location
-# TODO: size geo marker as % of the biggest requests
-# TODO: add a wait in dashboard until first load of data is finished ?
-# TODO: Add config of modules as dict (collector, server)
 # TODO: Add expand modebar button to open the graph in a modal window
 
 import base64
@@ -333,14 +329,11 @@ class DashboardApp(Flask):
                                 graph_data.setdefault('text', [])
                                 graph_data['text'].append(self._render_graph_text(dataset['text'], tabledata))
                             if 'marker' in dataset:
-                                # If a marker size is specified as a string, replace it with the column values
-                                graph_data.setdefault('marker', [])
+                                # If a marker size is specified as a string, replace it with the computed values
                                 size = dataset['marker'].get('size')
                                 if isinstance(size, str):
-                                    maxsz = dataset['marker'].get('sizemax', self.DEFAULT_GEO_MARKER_MAX_SIZE)
-                                    marker_data = deepcopy(dataset['marker'])
-                                    marker_data["size"] = [min(int(tabledata[size][idx]), maxsz) for idx in range(len(tabledata))]
-                                    graph_data['marker'].append(marker_data)
+                                    graph_data.setdefault('marker', [])
+                                    graph_data['marker'].append(self._render_marker_size(tabledata, dataset))
 
                     db_data["graph_data"] = graph_data
                 display_data.append(db_data)
@@ -353,6 +346,18 @@ class DashboardApp(Flask):
 
         self.logger.info(f"Request exec time: {time.time()-start_time}")
         return page_data
+
+    def _render_marker_size(self, tabledata, dataset):
+        marker_data = deepcopy(dataset['marker'])
+        size = dataset['marker'].get('size')
+
+        # Compute the dynamuc marker size between sizemin and sizemax
+        # where sizemax is the biggest value in the table
+        sizes = tabledata[size]
+        maxsz = dataset['marker'].get('sizemax', self.DEFAULT_GEO_MARKER_MAX_SIZE)
+        ratio = maxsz / max(sizes)
+        marker_data["size"] = [int(sizes[idx] * ratio) for idx in range(len(tabledata))]
+        return marker_data
 
     def context_data(self, dashboard, key):
         parent_dashboard_config = self.config[self.CONFIG_KEY_DASHBOARDS].get(dashboard)

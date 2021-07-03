@@ -4,22 +4,17 @@ import logging
 class Config(object):
     """This is the basic configuration class for PyWeblogalyzer."""
 
-    #
-    # Logging settings
-    #
+    ###################################################################################################
+    # General settings
+    ###################################################################################################
+
     LOG_FILE = None  # Leave to None to log in stderr and see in docker logs
     LOG_LEVEL = logging.INFO
 
-    #
-    #: Dashboard server settings
-    #
-    HOST = "0.0.0.0"  # use 0.0.0.0 to bind to all interfaces
-    PORT = 9333  # ports < 1024 need root
-    DEBUG = True  # if True, enable reloader and debugger
-
-    #
+    ###################################################################################################
     # Log collector settings
-    #
+    ###################################################################################################
+
     # Period in second to read new log data
     COLLECTION_DELAY_SECS = 60
 
@@ -59,7 +54,7 @@ class Config(object):
     EXCLUDE_REQUESTS = ["/metrics"]
 
     # List of local networks (cannot be geolocalised)
-    LOCAL_NETWORKS = ["192.168.0.0/24", "192.168.13.0/24"]
+    LOCAL_NETWORKS = ["192.168.0.0/24"]
 
     # Root path of log enrichers. All custom classes must be in this folder (or subfolders)
     # For docker, the logs must be in a mapped path
@@ -69,9 +64,14 @@ class Config(object):
     # Each enricher will be called with every parsed log entry, and can add auxiliary informations to them
     LOG_ENRICHERS = []
 
-    #
-    # Dashboards settings
-    #
+    ###################################################################################################
+    # Dashboard server settings
+    ###################################################################################################
+
+    # Server config
+    HOST = "0.0.0.0"  # use 0.0.0.0 to bind to all interfaces
+    PORT = 9333  # ports < 1024 need root
+    DEBUG = True  # if True, enable reloader and debugger
 
     # Preset refresh times in seconds
     REFRESH_TIMES = [30, 60, 300, 600]
@@ -144,6 +144,35 @@ class Config(object):
             "display_cols": ["timestamp", "bytes_sent"],
             "on_click": "ctxt_requests",
         },
+        "cities": {
+            "badge_title": "Total cities",
+            "badge_type": "info",
+            "table_title": "Requests per city",
+            "count_title": "Requests count",
+            "table_order": "Requests count",
+            "display_cols": ["city", "country", "lat", "long"],
+            "table_hide": ["lat", "long"],
+            "group_by_cols": ['city'],
+            "graph_config": {
+                "data": [{
+                    "type": 'scattergeo',
+                    "lat": "lat",
+                    "lon": "long",
+                    "hoverinfo": 'text',
+                    "text": "<b>{{Requests count}}</b> requests<br>(<i>{{city}}, {{country}}</i>)",
+                    "marker": {
+                        "color": 'green',
+                        "sizemin": 5,
+                        "sizemax": 45,
+                        "size": "Requests count",
+                        "line": {"color": 'black', "width": 0.2},
+                        "opacity": 0.7,
+                    }
+                }],
+                "layout": {'margin': {'l': 5, 'r': 5, 't': 10, 'b': 10, 'pad': 4}, "showlegend": False},
+            },
+            "on_click": "ctxt_cities",
+        },
         "codes": {
             "badge_title": None,
             "badge_type": "info",
@@ -193,23 +222,6 @@ class Config(object):
                 },
             },
             "on_click": "ctxt_countries",
-        },
-        "cities": {
-            "badge_title": "Total cities",
-            "badge_type": "info",
-            "table_title": "Requests per city",
-            "count_title": "Requests count",
-            "display_cols": ["city", "country"],
-            "table_order": "Requests count",
-            "group_by_cols": ['city'],
-            "graph_config": {
-                'data': [{'type': 'bar', 'x': "city", 'y': "Requests count"}],
-                'layout': {
-                    'xaxis': {},
-                    'yaxis': {'title': 'Requests'},
-                },
-            },
-            "on_click": "ctxt_cities",
         },
         "urls": {
             "badge_title": None,

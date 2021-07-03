@@ -1,21 +1,17 @@
-#
-# Logging settings
-#
+###################################################################################################
+# General settings
+###################################################################################################
+
 # LOG_FILE = None  # Leave to None to log in stderr and see in docker logs
 # LOG_LEVEL = logging.INFO
 
-#
-#: Dashboard server settings
-#
-# HOST = "0.0.0.0"  # use 0.0.0.0 to bind to all interfaces
-# PORT = 9333  # ports < 1024 need root
-# DEBUG = True  # if True, enable reloader and debugger
 
-#
+###################################################################################################
 # Log collector settings
-#
+###################################################################################################
+
 # Period in second to read new log data
-COLLECTION_DELAY_SECS = 60
+# COLLECTION_DELAY_SECS = 60
 
 # Path to the access log file. If the path is a folder, all access.log files in the folder will be parsed.
 # Optionaly if a WEB_LOG_FILTER is specified, only files containing the filter will be processed.
@@ -54,6 +50,10 @@ EXCLUDE_REQUESTS = ["/metrics"]
 # List of local networks (cannot be geolocalised)
 LOCAL_NETWORKS = ["192.168.0.0/24", "192.168.1.0/24"]
 
+# The server url is used to geolocate its location for local networks connections.
+# If not specified, location will set to "unknown"
+SERVER_URL = "www.example.org"
+
 # Root path of log enrichers. All custom classes must be in this folder (or subfolders)
 LOG_ENRICHERS_ROOT = "/config/log_enrichers"
 # Custom log enrichers, defined by the location of the main python file, and the class name.
@@ -67,18 +67,24 @@ LOG_ENRICHERS = [
     }
 ]
 
-#
-# Dashboards settings
-#
+
+###################################################################################################
+# Dashboard server settings
+###################################################################################################
+
+# Server config
+# HOST = "0.0.0.0"  # use 0.0.0.0 to bind to all interfaces
+# PORT = 9333  # ports < 1024 need root
+# DEBUG = True  # if True, enable reloader and debugger
 
 # Preset refresh times in seconds
-REFRESH_TIMES = [30, 60, 300, 600]
+# REFRESH_TIMES = [30, 60, 300, 600]
 
 # Format of the time for start and end date displayed in the dashboard
-DASHBOARD_RANGE_TIME_FORMAT = "%c"
+# DASHBOARD_RANGE_TIME_FORMAT = "%c"
 
 # Format of the datetime displayed in datatables (https://momentjs.com/docs/#/parsing/)
-DATATABLE_TIME_DISPLAY_FORMAT = 'YYYY/MM/DD HH:mm:ss'
+# DATATABLE_TIME_DISPLAY_FORMAT = 'YYYY/MM/DD HH:mm:ss'
 
 # Each dashboard is specifed as dictionnary with a name that must be unique, and contains the following fields:
 #
@@ -142,6 +148,35 @@ DASHBOARDS_CONFIG = {
         "display_cols": ["timestamp", "bytes_sent"],
         "on_click": "ctxt_requests",
     },
+    "cities": {
+        "badge_title": "Total cities",
+        "badge_type": "info",
+        "table_title": "Requests per city",
+        "count_title": "Requests count",
+        "table_order": "Requests count",
+        "display_cols": ["city", "country", "lat", "long"],
+        "table_hide": ["lat", "long"],
+        "group_by_cols": ['city'],
+        "graph_config": {
+            "data": [{
+                "type": 'scattergeo',
+                "lat": "lat",
+                "lon": "long",
+                "hoverinfo": 'text',
+                "text": "<b>{{Requests count}}</b> requests<br>(<i>{{city}}, {{country}}</i>)",
+                "marker": {
+                    "color": 'green',
+                    "sizemin": 5,
+                    "sizemax": 45,
+                    "size": "Requests count",
+                    "line": {"color": 'black', "width": 0.2},
+                    "opacity": 0.7,
+                }
+            }],
+            "layout": {'margin': {'l': 5, 'r': 5, 't': 10, 'b': 10, 'pad': 4}, "showlegend": False},
+        },
+        "on_click": "ctxt_cities",
+    },
     "codes": {
         "badge_title": None,
         "badge_type": "info",
@@ -180,8 +215,8 @@ DASHBOARDS_CONFIG = {
         "badge_type": "info",
         "table_title": "Requests per country",
         "count_title": "Requests count",
-        "table_order": "Requests count",
         "display_cols": ["country"],
+        "table_order": "Requests count",
         "group_by_cols": ['country'],
         "graph_config": {
             'data': [{'type': 'bar', 'x': "country", 'y': "Requests count"}],
@@ -192,30 +227,13 @@ DASHBOARDS_CONFIG = {
         },
         "on_click": "ctxt_countries",
     },
-    "cities": {
-        "badge_title": "Total cities",
-        "badge_type": "info",
-        "table_title": "Requests per city",
-        "count_title": "Requests count",
-        "table_order": "Requests count",
-        "display_cols": ["city", "country"],
-        "group_by_cols": ['city'],
-        "graph_config": {
-            'data': [{'type': 'bar', 'x': "city", 'y': "Requests count"}],
-            'layout': {
-                'xaxis': {},
-                'yaxis': {'title': 'Requests'},
-            },
-        },
-        "on_click": "ctxt_cities",
-    },
     "urls": {
         "badge_title": None,
         "table_title": "Unique URLs",
         "count_title": "URLs count",
-        "table_order": "URLs count",
         "display_cols": ["http_url"],
         "group_by_cols": ['http_url'],
+        "table_order": "URLs count",
         "graph_config": {
             'data': [{'type': 'bar', 'x': "http_url", 'y': "URLs count"}],
             'layout': {
@@ -230,9 +248,9 @@ DASHBOARDS_CONFIG = {
         "badge_type": "info",
         "table_title": "Browsers",
         "count_title": "count",
-        "table_order": "count",
         "display_cols": ["browser"],
         "group_by_cols": ['browser'],
+        "table_order": "count",
         "graph_config": {
             'data': [{'type': 'pie', 'values': "count", 'labels': "browser"}],
             'layout': {
@@ -251,9 +269,9 @@ DASHBOARDS_CONFIG = {
         "badge_type": "info",
         "table_title": "OS",
         "count_title": "count",
-        "table_order": "count",
         "display_cols": ["os"],
         "group_by_cols": ['os'],
+        "table_order": "count",
         "graph_config": {
             'data': [{'type': 'pie', 'labels': "os", 'values': "count"}],
             'layout': {
@@ -273,8 +291,8 @@ DASHBOARDS_CONFIG = {
         "table_title": "Devices",
         "count_title": "count",
         "display_cols": ["device"],
-        "table_order": "count",
         "group_by_cols": ['device'],
+        "table_order": "count",
         "graph_config": {
             'data': [{'type': 'pie', 'labels': "device", 'values': "count"}],
             'layout': {
@@ -287,13 +305,6 @@ DASHBOARDS_CONFIG = {
             },
         },
         "on_click": "ctxt_devices",
-    },
-    "params": {
-        "table_title": "Parameters",
-        "count_title": None,
-        "table_order": "timestamp",
-        "display_cols": ["timestamp", "aux_param", "remote_ip", "city", "country", "asn"],
-        "group_by_cols": None,
     },
     "logs": {
         "badge_title": "Total requests",

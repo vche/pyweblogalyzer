@@ -1,3 +1,4 @@
+from datetime import datetime
 
 # Required info fields. Accessible directly as attributes, always created at init.
 LOG_INFOS = [
@@ -35,8 +36,8 @@ class WebLogData:
         for field in LOG_INFOS:
             # For timestamps, keep the object, but put the string version in the dict to export to as as
             # serializable datatable. That sucks but datetime are converted to pandas Timestamp, not serializable
-            if field == "timestamp" and kwargs.get(field, None):
-                self.timestamp = kwargs[field]
+            if field == "timestamp":
+                self.timestamp = kwargs.get(field, datetime.now())
                 self._data[field] = self.timestamp.strftime(self.DASHBOARD_TIMESTAMP_EXPORT_FORMAT)
             else:
                 self._data[field] = kwargs.get(field, None)
