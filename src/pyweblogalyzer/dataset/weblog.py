@@ -2,7 +2,8 @@ import logging
 from pandas import DataFrame, DatetimeIndex
 from pyweblogalyzer.dataset.weblogdata import WebLogData
 from threading import Lock
-
+from datetime import timezone
+import pandas
 
 class WebLogDataSet:
     # Max waait time for getting a lock is 60s
@@ -34,14 +35,20 @@ class WebLogDataSet:
         if self.lock():
             # Creating a new dataframe reordered by date from the dict is the most efficient way,
             # as updating a df makes panda copying large chunks of data
-            df = DataFrame(self._data, columns=self._fields, index=DatetimeIndex(self._index)).sort_index()
+            try:
+                # df = DataFrame(self._data, columns=self._fields, index=DatetimeIndex(self._index, dtype='datetime64[ns, Europe/London]')).sort_index()
+                df = DataFrame(self._data, columns=self._fields, index=DatetimeIndex(pandas.to_datetime(self._index, utc=True))).sort_index()
+                # return DataFrame([values], columns=fields, index=DatetimeIndex()
+            except Exception as e:
+                self.log.exception(f"Error getting dataframe: {e}")
+                df = self._empty_df
             self.unlock()
         else:
             df = self._empty_df
         return df
 
     def lock(self):
-        res = self._dataset_lock.acquire(timeout = self.LOCK_TIMEOUT)
+        res = self._dataset_lock.acquire(timeout=self.LOCK_TIMEOUT)
         if not res:
             self.log.error("Couldn't acquire lock on dataset after %s seconds", self.LOCK_TIMEOUT)
         return res

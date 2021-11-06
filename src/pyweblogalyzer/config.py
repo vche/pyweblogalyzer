@@ -307,6 +307,7 @@ class Config(object):
             "table_title": "Logs",
             "count_title": None,
             "large": True,
+            "allow_empty": True,
             "display_cols": [
                 "timestamp",
                 "remote_ip",

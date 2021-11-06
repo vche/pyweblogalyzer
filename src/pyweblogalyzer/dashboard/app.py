@@ -45,6 +45,7 @@ class DashboardApp(Flask):
     CONFIG_KEY_TIME_GROUP = "time_group"
     CONFIG_KEY_TIME_TITLE = "time_title"
     CONFIG_KEY_GRAPH = "graph_config"
+    CONFIG_KEY_ALLOW_EMPTY = "allow_empty"
     CONFIG_TEXT_RENDERER_REGEX = "\{\{(?P<key>[\d\s\w]*)\}\}"
     DEFAULT_GEO_MARKER_MAX_SIZE = 100
     DEFAULT_BADGE_TYPE = "gray"
@@ -75,7 +76,8 @@ class DashboardApp(Flask):
         filter=None,
         value=None,
         time_group=None,
-        time_title=None
+        time_title=None,
+        allow_empty=False,
     ):
         """Compute the data table for this dashboard."""
         tabledata = logdata
@@ -103,7 +105,10 @@ class DashboardApp(Flask):
 
         # Filter out to keep specify columns
         if display_cols:
-            tabledata = tabledata[display_cols].dropna()
+            # tabledata = tabledata[display_cols].dropna()
+            tabledata = tabledata[display_cols]
+            if not allow_empty:
+                tabledata = tabledata.dropna()
 
         # If grouping specified, add a column with the duplicates count
         if groupby_cols:
@@ -304,6 +309,7 @@ class DashboardApp(Flask):
                     count_title=dashboard.get(self.CONFIG_KEY_COUNT_TITLE, "count"),
                     time_group=dashboard.get(self.CONFIG_KEY_TIME_GROUP),
                     time_title=dashboard.get(self.CONFIG_KEY_TIME_TITLE, "tcount"),
+                    allow_empty=dashboard.get(self.CONFIG_KEY_ALLOW_EMPTY, False)
                 )
 
                 # If this db has a badge
