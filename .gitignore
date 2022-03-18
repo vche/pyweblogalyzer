@@ -1,0 +1,9 @@
+pyvenv
+*.egg-info
+.coverage
+.tox
+docs/doc
+__pycache__
+pyvenv
+etc/dev
+pipo
